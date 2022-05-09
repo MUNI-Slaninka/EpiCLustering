@@ -1,24 +1,29 @@
-from read_clustering import clustering
-from read_processing import get_processed
-from command_IO import output_bam
-
-import os
-import sys
-import argparse
 
 
-def parse_arguments():
-    my_parser = argparse.ArgumentParser()
-    my_parser.add_argument()
-    args = my_parser.parse_args()
-
-    input_path = args.Path
+from clustering import clustering
+from output import output
+from input_processing import get_processed
+from parser import parse_arguments
 
 
-if not os.path.isdir(input_path):
-    print('The path specified does not exist')
-    sys.exit()
+def main():
+    """
+    main loop
+
+    :return: None
+    """
+
+    args = parse_arguments()
+
+    cg_mod_table, basic_mod_table = get_processed(args["input"], args["ref_name"], args["start"], args["end"])
+
+    clust_dict = clustering(cg_mod_table, args["clust_types"], args["imputer_divisor"], args["clusters"],
+                            args["min_samples"], args["min_divisor"], args["eps_divisor"],
+                            args["eps_step"], args["eps_range"], args["neg_weight"])
+
+    output(clust_dict, args["input"], args["out_dir"], args["ref_name"], args["start"], args["end"],
+           cg_mod_table, basic_mod_table, args["out_bam"], args["out_positions"])
+
+
 if __name__ == '__main__':
-    clust_dict = clustering(get_processed("../mod_bases_mapped.bam"))
-    print(clust_dict)
-    output_bam(clust_dict, "../mod_bases_mapped.bam")
+    main()
