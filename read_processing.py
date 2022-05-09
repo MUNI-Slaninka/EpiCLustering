@@ -20,12 +20,10 @@ def _get_pos_cit(bam_file, name, start, end):
 
     dict_mod_pos = {}
     dict_cit_pos = {}
-    bam_file = pysam.AlignmentFile(bam_file, "rb")
+    with pysam.AlignmentFile(bam_file, "rb") as bam_file:
+        for read in bam_file.fetch(name, start, end):
+            dict_mod_pos[read.qname] = __process_read(read, start, end, dict_cit_pos)
 
-    for read in bam_file.fetch(name, start, end):
-        dict_mod_pos[read.qname] = __process_read(read, start, end, dict_cit_pos)
-
-    bam_file.close()
     return dict_mod_pos, dict_cit_pos
 
 
