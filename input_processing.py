@@ -46,12 +46,12 @@ def _get_pos_cit(bam_file, name, start, end):
     dict_cit_pos = {}
     with pysam.AlignmentFile(bam_file, "rb") as bam_file:
         for read in bam_file.fetch(name, start, end):
-            dict_mod_pos[read.qname] = __process_read(read, start, end, dict_cit_pos)
+            dict_mod_pos[read.qname] = _process_read(read, start, end, dict_cit_pos)
 
     return dict_mod_pos, dict_cit_pos
 
 
-def __process_read(read, start, end, dict_cit_pos):
+def _process_read(read, start, end, dict_cit_pos):
     """
     Function for retrieving modified and cytosine positions from single read
 
@@ -73,12 +73,12 @@ def __process_read(read, start, end, dict_cit_pos):
         mod_bases = [(ref_pos_list[x[0]], x[1]) for x in mod_bases if
                      ref_pos_list[x[0]] and start < ref_pos_list[x[0]] < end]
 
-    __fill_other_cit(read, dict_cit_pos)
+    _fill_other_cit(read, dict_cit_pos)
 
     return mod_bases
 
 
-def __fill_other_cit(read, dict_cit_pos):
+def _fill_other_cit(read, dict_cit_pos):
     """
     Function for filling dictionary of cytosine positions with non modified cytosines
 

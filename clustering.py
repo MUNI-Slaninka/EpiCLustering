@@ -5,7 +5,7 @@ from enum import Enum, auto
 from sklearn.cluster import DBSCAN
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import KMeans
-from sklearn.cluster import Birch
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.impute import KNNImputer
 from sklearn.metrics import silhouette_score
 from sklearn.pipeline import make_pipeline
@@ -18,13 +18,13 @@ class ClusterType(Enum):
     """
 
     KMEANS = auto()
-    BIRCH = auto()
+    MINIK = auto()
     AGGLOMERATIVE = auto()
     DENSITY = auto()
 
 
-def clustering(mod_table, types, imputer_divisor, clusters, min_samples, min_divisor,
-               eps_divisor, eps_step, eps_range, neg_weight):
+def clustering(mod_table, types, imputer_divisor, clusters, min_clusters, max_clusters, hac_linkage,
+               min_samples, min_divisor, eps_divisor, eps_step, eps_range, neg_weight):
     """
     Function for clustering epigenetic data.
 
@@ -33,6 +33,9 @@ def clustering(mod_table, types, imputer_divisor, clusters, min_samples, min_div
     :param types: string with characters A,B,D,K defining which types of clustering will be used
     :param imputer_divisor: divisor used for choosing amount of neighbours when imputing
     :param clusters: Number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param min_clusters: Minimum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param max_clusters: Maximum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param hac_linkage: Linkage to be used in HAC clustering
     :param min_samples: minimum samples in DBSCAN cluster
     :param min_divisor: divisor for automatic calculation of minimum samples (only applies to DBSCAN)
     :param eps_divisor: divisor for automatic calculation of epsilon value (only applies to DBSCAN)
@@ -52,7 +55,8 @@ def clustering(mod_table, types, imputer_divisor, clusters, min_samples, min_div
     eps_iter = _get_eps_iter(mod_table, eps_divisor, eps_step, eps_range)
 
     clustered = _get_clustered(_get_transformed(mod_table, imputer_divisor),
-                               types, clusters, eps_iter, min_samples, neg_weight)
+                               types, clusters, min_clusters, max_clusters, hac_linkage,
+                               eps_iter, min_samples, neg_weight)
 
     return _split_ids(clustered, mod_table.index)
 
@@ -121,14 +125,18 @@ def _get_transformed(mod_table, imputer_divisor):
     return transform_pipeline.fit_transform(mod_table)
 
 
-def _get_clustered(transformed_table, types, clusters, eps_iter, min_samples, neg_weight):
+def _get_clustered(transformed_table, types, clusters, min_clusters, max_clusters,
+                   hac_linkage, eps_iter, min_samples, neg_weight):
     """
     Function for clustering pre-processed epigenetic data.
 
     Parameters:
     :param transformed_table: numpy matrix with normalized and non-NaN data
-    :param types: types of clustering to be used
     :param types: string with characters A,B,D,K defining which types of clustering will be used
+    :param clusters: Number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param min_clusters: Minimum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param max_clusters: Maximum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param hac_linkage: Linkage to be used in HAC clustering
     :param eps_iter: iterable over eps values which should be used in DBSCAN clustering
     :param min_samples: minimum samples in DBSCAN cluster
     :param neg_weight: weight of outliers when choosing best DBSCAN clustering
@@ -139,22 +147,30 @@ def _get_clustered(transformed_table, types, clusters, eps_iter, min_samples, ne
     result = {}
 
     if "K" in types:
+        clusters = _find_cluster_count(clusters, min_clusters, max_clusters, transformed_table,
+                                       lambda x:  KMeans(n_clusters=x))
         result[ClusterType.KMEANS] = KMeans(n_clusters=clusters).fit_predict(transformed_table)
-        print(f"Clustered with kmeans, silhouette score was: "
+        print(f"Clustered with kmeans, number of clusters found was: {clusters}, silhouette score was: "
               f"{silhouette_score(transformed_table, result[ClusterType.KMEANS])}")
 
-    if "B" in types:
-        result[ClusterType.BIRCH] = Birch(n_clusters=clusters).fit_predict(transformed_table)
-        print(f"Clustered with birch, silhouette score was: "
-              f"{silhouette_score(transformed_table, result[ClusterType.BIRCH])}")
+    if "M" in types:
+        clusters = _find_cluster_count(clusters, min_clusters, max_clusters, transformed_table,
+                                       lambda x: MiniBatchKMeans(n_clusters=x))
+        result[ClusterType.MINIK] = MiniBatchKMeans(n_clusters=clusters).fit_predict(transformed_table)
+        print(f"Clustered with Mini batch k means, number of clusters found was: {clusters}, silhouette score was: "
+              f"{silhouette_score(transformed_table, result[ClusterType.MINIK])}")
 
     if "A" in types:
-        result[ClusterType.AGGLOMERATIVE] = AgglomerativeClustering(n_clusters=clusters).fit_predict(transformed_table)
-        print(f"Clustered with HAC, silhouette score was: "
+        clusters = _find_cluster_count(clusters, min_clusters, max_clusters, transformed_table,
+                                       lambda x: AgglomerativeClustering(n_clusters=x, compute_full_tree=True,
+                                                                         linkage=hac_linkage))
+        result[ClusterType.AGGLOMERATIVE] = AgglomerativeClustering(n_clusters=clusters, compute_full_tree=True,
+                                                                    linkage=hac_linkage).fit_predict(transformed_table)
+        print(f"Clustered with HAC, number of clusters found was: {clusters}, silhouette score was: "
               f"{silhouette_score(transformed_table, result[ClusterType.AGGLOMERATIVE])}")
 
     if "D" in types:
-        result[ClusterType.DENSITY] = __density_cluster(transformed_table, eps_iter, min_samples, neg_weight)
+        result[ClusterType.DENSITY] = _density_cluster(transformed_table, eps_iter, min_samples, neg_weight)
         if 1 not in result[ClusterType.DENSITY]:
             print("No clusters were found with DBSCAN")
         else:
@@ -169,7 +185,7 @@ def _get_clustered(transformed_table, types, clusters, eps_iter, min_samples, ne
     return result
 
 
-def __density_cluster(transformed_table, eps_iter, min_samples, neg_weight):
+def _density_cluster(transformed_table, eps_iter, min_samples, neg_weight):
     """
     Function for clustering data with DBSCAN multiple times(only best result returned)
 
@@ -189,16 +205,17 @@ def __density_cluster(transformed_table, eps_iter, min_samples, neg_weight):
         dbscan.fit(transformed_table)
         results.append(dbscan.labels_)
 
-    return __choose_best_density(results, neg_weight)
+    return _choose_best_density(results, neg_weight, transformed_table)
 
 
-def __choose_best_density(results, neg_weight):
+def _choose_best_density(results, neg_weight, transformed_table):
     """
     Function for deciding the best density clustering
 
     Parameters:
     :param results: list of list to be chosen from
     :param neg_weight: weight of outliers
+    :param transformed_table: numpy matrix with normalized and non-NaN data
 
     :return: chosen clustering (list of values indicative of belonging to specific cluster)
     """
@@ -207,7 +224,7 @@ def __choose_best_density(results, neg_weight):
     score = -np.inf
 
     for possibility in results:
-        temp_score = __count_density_score(possibility, neg_weight)
+        temp_score = _count_density_score(possibility, neg_weight, transformed_table)
         if temp_score >= score:
             score = temp_score
             best = possibility
@@ -215,25 +232,50 @@ def __choose_best_density(results, neg_weight):
     return best
 
 
-def __count_density_score(possibility, neg_weight):
+def _count_density_score(possibility, neg_weight, transformed_table):
     """
     Function for calculating score of clustering
 
     ----------
     -the less outliers the better
-    -the more similar number of reads in each cluster the better
     ----------
 
     Parameters:
     :param possibility: list of values indicative of belonging to specific cluster
     :param neg_weight: weight of outliers
+    :param transformed_table: numpy matrix with normalized and non-NaN data
 
-    :return: score, higher -> better
+    :return: silhouette score with outliers counted in
     """
 
     unique, counts = np.unique(possibility, return_counts=True)
     dict_counts = dict(zip(unique, counts))
-    negative = dict_counts.get(-1, 0) * neg_weight
-    positive = sum([-abs(dict_counts[x] - len(possibility) / max(len(dict_counts), 2)) for x in dict_counts if x >= 0])
 
-    return positive / len(dict_counts) - negative
+    if len(dict_counts) <= 1:
+        return -np.inf
+
+    negative = dict_counts.get(-1, 0)/len(possibility) * neg_weight
+    return silhouette_score(transformed_table, possibility) - negative
+
+
+def _find_cluster_count(clusters, min_clusters, max_clusters, transformed_table, clustering_f):
+    """
+    Finds the best number of clusters for a given clustering function, uses silhouette score as metric
+
+    :param clusters: Number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param min_clusters: Minimum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param max_clusters: Maximum number of clusters to be used in clustering (does not apply to DBSCAN)
+    :param transformed_table: numpy matrix with normalized and non-NaN data
+    :param clustering_f: function to be used for clustering, that has one parameter number of clusters
+
+    :return: count of clusters based on the best silhouette score
+    """
+
+    score = -np.inf
+    if not clusters:
+        for i in range(min_clusters, max_clusters + 1):
+            s_score = silhouette_score(transformed_table, clustering_f(i).fit_predict(transformed_table))
+            if s_score > score:
+                score = s_score
+                clusters = i
+    return clusters

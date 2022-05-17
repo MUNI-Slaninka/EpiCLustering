@@ -43,18 +43,22 @@ def _output_bam(dict_clusters, file_path, output_dir, name, start, end):
     :return: None
     """
 
+    dict_reads={}
     with pysam.AlignmentFile(file_path, "rb") as bam_file:
-        for dir_1 in dict_clusters:
-            for dir_2 in dict_clusters[dir_1]:
-                os.makedirs(f"{output_dir}/{dir_1}/{dir_2}")
         for key in dict_clusters:
             for read in bam_file.fetch(name, start, end):
-                with pysam.AlignmentFile(__get_read_path(read.qname, dict_clusters, key, output_dir),
-                                         "wb", template=bam_file) as out_file:
-                    out_file.write(read)
+                path = _get_read_path(read.qname, dict_clusters, key, output_dir)
+                dict_reads[path] = dict_reads.get(path, []) + [read]
+        for dir_name in dict_clusters:
+            os.makedirs(f"{output_dir}/{dir_name}")
+        for path in dict_reads:
+            out_file = pysam.AlignmentFile(path, "wb", template=bam_file)
+            for read in dict_reads[path]:
+                out_file.write(read)
+            out_file.close()
 
 
-def __get_read_path(read_id, dict_clusters, key, output_dir):
+def _get_read_path(read_id, dict_clusters, key, output_dir):
     """
     Function for choosing the right path to store the bam file of a read
 
@@ -69,4 +73,4 @@ def __get_read_path(read_id, dict_clusters, key, output_dir):
 
     for k2, ids in dict_clusters[key].items():
         if read_id in ids:
-            return f"{output_dir}/{key}/{k2}/{read_id}.bam"
+            return f"{output_dir}/{key}/{k2}.bam"

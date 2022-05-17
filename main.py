@@ -18,6 +18,7 @@ def main():
     cg_mod_table, basic_mod_table = get_processed(args["input"], args["ref_name"], args["start"], args["end"])
 
     clust_dict = clustering(cg_mod_table, args["clust_types"], args["imputer_divisor"], args["clusters"],
+                            args["min_clusters"], args["max_clusters"], args["hac_linkage"],
                             args["min_samples"], args["min_divisor"], args["eps_divisor"],
                             args["eps_step"], args["eps_range"], args["neg_weight"])
 

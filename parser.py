@@ -27,22 +27,31 @@ def parse_arguments():
                        help="Specify path to directory in which output will be stored")
 
     arg_p.add_argument("-n", "--ref-name", required=True,
-                       help="Specify path to input BAM file")
+                       help="Specify name of reference")
 
     arg_p.add_argument("-s", "--start", required=True, type=int,
-                       help="Specify path to directory in which output will be stored")
+                       help="Specify starting position")
 
     arg_p.add_argument("-e", "--end", required=True, type=int,
-                       help="Specify path to input BAM file")
+                       help="Specify end position")
 
-    arg_p.add_argument("-t", "--clust-types", required=False, default="ABDK",
+    arg_p.add_argument("-t", "--clust-types", required=False, default="ADKM",
                        help="Specify types of clustering algorithms")
 
     arg_p.add_argument("-d", "--imputer-divisor", required=False, type=int, default=4,
                        help="Specify types of clustering algorithms")
 
-    arg_p.add_argument("-c", "--clusters", required=False, type=int, default=2,
+    arg_p.add_argument("-c", "--clusters", required=False, type=int, default=None,
                        help="Specify number of expected clusters (for non-Density based clustering)")
+
+    arg_p.add_argument("-l", "--min-clusters", required=False, type=int, default=2,
+                       help="Specify number of minimal expected clusters (for non-Density based clustering)")
+
+    arg_p.add_argument("-x", "--max-clusters", required=False, type=int, default=5,
+                       help="Specify number of maximal expected clusters (for non-Density based clustering)")
+
+    arg_p.add_argument("--hac-linkage", required=False, default="ward",
+                       help="Specify the linkage used for agglomerative clustering")
 
     arg_p.add_argument("-m", "--min-samples", required=False, type=int,
                        help="Specify number of minimal samples in cluster (for Density based clustering)")
