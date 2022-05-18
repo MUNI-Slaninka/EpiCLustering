@@ -41,32 +41,33 @@ Optional: CSV from pandas dataframe of C and CG positions used for clustering
 ```bash
 -i INPUT, --input INPUT
 ```
-Specify path to input BAM file
+Required: Specify path to input BAM file
 
 ```bash
 -o OUT_DIR, --out-dir OUT_DIR
 ```
-Specify path to directory in which output will be stored
+Required: Specify path to directory in which output will be stored, the directory must be empty.
 
 ```bash
 -n REF_NAME, --ref-name REF_NAME
 ```
-Specify name of reference
+Required: Specify name of reference
 
 ```bash
 -s START, --start START
 ```
-Specify starting position
+Required: Specify starting position (ideal distance between start and endpositions is about 10000-100000 nucleotides or 10-100CG pairs)
 
 ```bash
 -e END, --end END
 ```
-Specify end position
+Required: Specify end position (ideal distance between start and endpositions is about 10000-100000 nucleotides or 10-100CG pairs)
 
 ```bash
 -t CLUST_TYPES, --clust-types CLUST_TYPES
 ```
-Specify types of clustering algorithms (default: ABDK)
+Specify types of clustering algorithms, this is done by specifing a string containning these characters to activate corresponding algorithm.(default: ADKM)
+A: Hierarchical agglomerative clustering, D: Density-Based Spatial Clustering, K: Kmeans, M: Mini Batch KMeans
 
 ```bash
 -d IMPUTER_DIVISOR, --imputer-divisor IMPUTER_DIVISOR
@@ -76,37 +77,53 @@ Specify types of clustering algorithms (default: 4)
 ```bash
 -c CLUSTERS, --clusters CLUSTERS
 ```
-Specify number of expected clusters (for non-Density based clustering) (default: 2)
+Specify number of expected clusters (for algorithms A,K,M) (minimum: 2) (default: None)
+If number of clusters is not specified, the best number according to Silhouette Score will be chosen, within the range given by MIN_CLUSTERS aand MAX_CLUSTERS.
+
+```bash
+-l MIN_CLUSTERS, --min-clusters MIN_CLUSTERS
+```
+Specify number of minimal expected clusters (for algorithms A,K,M), when CLUSTERS is not specified.  (minimum: 2) (default: 2)
+
+```bash
+-x MAX_CLUSTERS, --max-clusters MAX_CLUSTERS
+```
+Specify number of maximal expected clusters (for algorithms A,K,M), when CLUSTERS is not specified. (default: 5)
+
+```bash
+ --hac-linkage HAC_LINKAGE
+```
+Specify the linkage used (for algorithm A) (default: ward)
 
 ```bash
 -m MIN_SAMPLES, --min-samples MIN_SAMPLES
 ```
-Specify number of minimal samples in cluster (for Density based clustering) (default: None)
+Specify number of minimal samples in cluster (for algorithm D) (default: None)
 
 ```bash
 --min-divisor MIN_DIVISOR
 ```
-Specify divisor for automatic minimum samples calculation (for Density based clustering) (default: 5)
+Specify divisor for automatic minimum samples calculation (for algorithm D) (default: 5)
 
 ```bash
 --eps-divisor EPS_DIVISOR
 ```
-Specify divisor for automatic epsilon value calculation (for Density based clustering) (default: 4)
+Specify divisor for automatic epsilon value calculation (for algorithm D) (default: 4)
 
 ```bash
 --eps-step EPS_STEP
 ```
-Specify step size for automatic epsilon value calculation (for Density based clustering) (default: 1)
+Specify step size for automatic epsilon value calculation (for algorithm D) (default: 1)
 
 ```bash
 --eps-range EPS_RANGE
 ```
-Specify broadness of epsilon range for automatic epsilon value calculation (for Density based clustering) (default: 10)
+Specify broadness of epsilon range for automatic epsilon value calculation (for algorithm D) (default: 10)
 
 ```bash
 --neg-weight NEG_WEIGHT
 ```
-Specify weight of outliers for choice of the best Density based clustering (default: 3)
+Specify weight of outliers for choice of the best Density-based clustering (default: 1)
 
 ```bash
 --out-bam OUT_BAM
