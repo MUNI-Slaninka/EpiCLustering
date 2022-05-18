@@ -5,12 +5,33 @@ Differentiating between identical nucleotide sequences using epigenetic informat
 This program clusters reads based on their epigenetic information(methylation status of CG sites).
 
 ## Instalation
-This program should be cloned from git and run with preinstalled python 3.
-### Required libraries
-This porgram uses these python libraries which are not standart:
-pandas, numpy, scikit-learn, pysam (!There is no official pysam version for Windows!)
+Clone or download and extract this GitHub repository from https://github.com/MUNI-Slaninka/EpiCLustering.
+
+Install dependencies pandas, numpy, scikit-learn, pysam.
+This can beachieved in terminal with pip in following manner:
+```bash
+pip install pandas numpy scikit-learn pysam
+```
+This can be achieved in terminal with conda in following manner:
+```bash
+conda install -c anaconda numpy pandas scikit-learn
+conda install -c bioconda pysam
+```
 
 ## Usage
+Run the main.py file inside the the downloaded repository from terminal with the use of python:
+```bash
+python3 main.py [arguments]
+```
+or
+```bash
+python main.py [arguments]
+```
+For help with arguments usage open readme.md file or run:
+```bash
+python main.py --help
+```
+
 ### Input
 Bam files that should be mapped and have Mm and M1 tags filled
 ### Output
